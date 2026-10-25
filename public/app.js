@@ -54,13 +54,18 @@ function makePeer(id){
  pc.onicecandidate=e=>{if(e.candidate)socket.emit('signal',{to:id,candidate:e.candidate.toJSON()})};
  pc.ontrack=e=>{
   const video=role==='admin'?clientFeed(id):$('remote');
+  if(role==='admin')$('waiting').hidden=true;
   if(e.streams[0])video.srcObject=e.streams[0];
   else{const stream=video.srcObject||new MediaStream();stream.addTrack(e.track);video.srcObject=stream}
-  video.play().catch(()=>status('Client feed received. Click the video to play.'));
+  video.play().catch(()=>status('Video track received, but autoplay blocked. Tap video to play.'));
+  video.onclick=()=>video.play().catch(()=>{});
   if(role==='client')$('waiting').hidden=true;
  };
  pc.onconnectionstatechange=()=>status('Peer '+id.slice(0,6)+': '+pc.connectionState);
- for(const kind of ['video','audio']){
+ pc.onnegotiationneeded=()=>console.info('Negotiation needed',role,id);
+ pc.onicecandidateerror=e=>console.warn('ICE candidate error',e.errorCode,e.errorText);
+ // Only the offerer creates transceivers. The answerer reuses the offered m-lines.
+ if(role==='admin')for(const kind of ['video','audio']){
   const track=source?.getTracks().find(t=>t.kind===kind);
   pc.addTransceiver(track||kind,{direction:'sendrecv',streams:track&&source?[source]:[]});
  }
@@ -108,6 +113,7 @@ socket.on('client-joined',async ({id,count})=>{
 socket.on('client-left',({id,count})=>{
  peers.get(id)?.close();peers.delete(id);pending.delete(id);
  document.getElementById('feed-'+id)?.remove();$('count').textContent=count;
+ if(role==='admin'&&count===0)$('waiting').hidden=false;
 });
 socket.on('room-count',n=>$('count').textContent=n);
 socket.on('signal',async msg=>{
@@ -118,7 +124,7 @@ socket.on('signal',async msg=>{
   if(msg.description){
    await pc.setRemoteDescription(msg.description);await flush(id);
    if(msg.description.type==='offer'){
-    if(role==='client'&&!source){try{await ensureCamera()}catch(e){console.warn(e)}}
+    if(role==='client'&&!source){try{await ensureCamera()}catch(e){status('Client camera permission needed: '+e.message);console.warn(e)}}
     for(const kind of ['video','audio']){
      const sender=pc.getTransceivers().find(t=>t.receiver.track.kind===kind)?.sender;
      if(sender)await sender.replaceTrack(source?.getTracks().find(t=>t.kind===kind)||null);

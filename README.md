@@ -29,3 +29,9 @@ Added matching premium navy-and-gold Admin Studio and Client Live Tour dashboard
 - Connection status now indicates when a TURN server may be needed.
 - STUN-only peer-to-peer WebRTC is not guaranteed across mobile networks or strict NAT/firewalls.
 - This patch has passed static syntax checks; no live two-device WebRTC test was performed.
+
+
+## v10 connection fix
+The client answerer no longer pre-creates transceivers. It reuses the transceivers established by the Admin's SDP offer and attaches its camera tracks before creating the answer. This prevents extra m-lines and an invalid answer.
+
+Checks: syntax and static signaling-order assertions. A live multi-device call is not verified in this environment.
