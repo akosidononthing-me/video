@@ -1,0 +1,45 @@
+/* On-Tour v9 reference dashboard skin. Existing functional IDs retained. */
+:root{--ref-bg:#06101e;--ref-card:#0e2036;--ref-edge:#203a59;--ref-accent:#2378ee;--ref-text:#edf5ff}
+body{background:linear-gradient(130deg,#030a13,#081b30 55%,#030a13);color:var(--ref-text);font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif}
+.reference-topbar{background:#0b1a2e;border-bottom:1px solid #193454;min-height:78px}
+.reference-topbar .logo{font-size:24px;color:#fff}.reference-topbar .logo span{color:#fff}
+.reference-topbar .tag{background:#0a3b38;color:#53e6ac;border:1px solid #156a56}
+#call{max-width:1700px;margin:auto;padding:12px 18px}
+#call .call-heading{padding:5px 3px 13px;text-align:left}
+#call .call-heading h1{font-size:23px;margin:4px 0}#call .call-heading p{font-size:13px;margin:0;color:#9eb3d0}
+#call .call-heading .eyebrow{color:#4ad5a2;font-size:11px}
+#call .toolbar{border:1px solid var(--ref-edge);background:#0c1c30;border-radius:13px;padding:12px 16px;display:flex;gap:12px;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap}
+#call .toolbar>div:last-child{display:flex;gap:8px;flex-wrap:wrap}
+#call button{background:#1464d9;color:#fff;border:1px solid #2779ef;border-radius:9px;padding:10px 14px;font-weight:650;cursor:pointer}
+#call button:hover{filter:brightness(1.16)}
+#call button.secondary,#call #layout,#call #fullscreen,#call #copy{background:#1a314e;border-color:#284463}
+#call button.danger,#call #end{background:#d82831;border-color:#e7484e}
+#call .workspace{display:grid;grid-template-columns:minmax(0,2.25fr) minmax(280px,.85fr);align-items:start;gap:15px}
+#call .workspace.side{grid-template-columns:1fr 1fr}
+#call .card{background:linear-gradient(155deg,#11243d,#0a192b);border:1px solid #1d3858;border-radius:14px;box-shadow:0 9px 35px #0003}
+#call .monitor{padding:0;overflow:hidden}
+#call .monitor-title{display:flex;justify-content:space-between;align-items:center;padding:15px 18px;background:#142b46;border-bottom:1px solid #29435e}
+#connectionLabel{color:#3bd8a0;font-size:12px}
+#call .video-grid{padding:12px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;min-height:390px}
+#call .video-grid:has(.feed:only-child){grid-template-columns:1fr}
+#call .feed{position:relative;overflow:hidden;border-radius:12px;background:#030b15;min-height:205px;aspect-ratio:16/10;border:1px solid #2a4563}
+#call .feed video{width:100%;height:100%;object-fit:cover;display:block}
+#call .feed span{position:absolute;bottom:12px;left:12px;background:#07101ed9;color:#fff;padding:6px 11px;border-radius:7px;font-size:13px}
+#call #waiting{position:absolute;inset:0;display:grid;place-items:center;color:#a9bed8;background:#091a2d}
+#call #status{color:#95b8d8;margin:0;padding:12px 16px;background:#0b1c2f;font-size:13px}
+#call .reference-sidebar{display:flex;flex-direction:column;gap:14px}
+#call aside .card{padding:16px}#call aside h3{font-size:16px;margin:0 0 14px}
+#call #local{width:100%;max-height:190px;background:#030a13;border-radius:9px;object-fit:cover}
+#call .preview-actions{display:flex;gap:8px;margin-top:9px}
+#call .preview-actions button{flex:1}
+#call .messages{min-height:200px;max-height:380px;overflow-y:auto}
+#call .msg{background:#162d4a;border-radius:10px;margin:9px 0;padding:11px}
+#call .msg b{color:#f5f8ff}#call .msg time{color:#90a8c3}
+#call .chat input{background:#132943;color:#fff;border:1px solid #294662;border-radius:8px}
+#call #filePreview{max-width:100%;border-radius:10px}
+.live-dot{color:#36df9d;font-size:12px;font-weight:700}
+#entry{background:#0d2037;border:1px solid #24415f;color:#fff}
+#entry input{background:#132b48;color:#fff;border:1px solid #365575}
+@media(max-width:900px){#call .workspace,#call .workspace.side{grid-template-columns:1fr}#call .video-grid{min-height:250px}}
+@media(max-width:530px){#call .video-grid{grid-template-columns:1fr}#call .toolbar{align-items:stretch}#call .toolbar>div:last-child button{flex:1}#call{padding:9px}}
+\n#call #waiting[hidden]{display:none!important}\n
