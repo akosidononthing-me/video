@@ -1,3 +1,24 @@
+const express = require('express');
+const app = express();
+const http = require('http').createServer(app);
+const io = require('socket.io')(http);
+
+app.use(express.static('public'));
+app.use(express.json());
+
+// In-memory room storage
+const rooms = {}; 
+
+// Simple Admin Login Endpoint
+app.post('/api/admin-login', (req, res) => {
+    const { password } = req.body;
+    if (password === 'admin123') { // Replace with secure env variable in production
+        res.json({ success: true });
+    } else {
+        res.status(401).json({ success: false, message: 'Invalid password' });
+    }
+});
+
 io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
 
@@ -80,3 +101,42 @@ io.on('connection', (socket) => {
         }
     });
 });
+
+    // WebRTC Signaling within Rooms
+    socket.on('offer', (data) => {
+        socket.to(data.target).emit('offer', { offer: data.offer, sender: socket.id });
+    });
+
+    socket.on('answer', (data) => {
+        socket.to(data.target).emit('answer', { answer: data.answer, sender: socket.id });
+    });
+
+    socket.on('ice-candidate', (data) => {
+        socket.to(data.target).emit('ice-candidate', { candidate: data.candidate, sender: socket.id });
+    });
+
+    // Chat Message Routing
+    socket.on('chat-message', (data) => {
+        io.to(data.roomCode).emit('chat-message', { sender: data.senderName, text: data.text });
+    });
+
+    socket.on('disconnect', () => {
+        // Handle cleanup when clients or admins drop
+        for (const code in rooms) {
+            const room = rooms[code];
+            if (room.admin === socket.id) {
+                io.to(code).emit('room-closed');
+                delete rooms[code];
+            } else {
+                const index = room.clients.indexOf(socket.id);
+                if (index !== -1) {
+                    room.clients.splice(index, 1);
+                    io.to(room.admin).emit('client-left', { clientId: socket.id, totalClients: room.clients.length });
+                }
+            }
+        }
+    });
+});
+
+const PORT = process.env.PORT || 3000;
+http.listen(PORT, () => console.log(`On-Tour Server running on port ${PORT}`));
