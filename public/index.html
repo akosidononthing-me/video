@@ -1,24 +1,6 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Video Call</title>
-    <link rel="stylesheet" href="style.css">
-</head>
-<body>
-    <div class="video-container">
-        <!-- playsinline is critical for mobile WebViews -->
-        <video id="remoteVideo" autoplay playsinline></video>
-        <video id="localVideo" autoplay playsinline muted></video>
-    </div>
-    
-    <div class="controls">
-        <button id="startCallBtn">Start Call</button>
-    </div>
-
-    <!-- Load Socket.io and custom application logic -->
-    <script src="/socket.io/socket.io.js"></script>
-    <script src="app.js"></script>
-</body>
-</html>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>On-Tour | Apartment Tour Presentation</title><link rel="stylesheet" href="/assets/home.css"></head><body>
+<header><a class="brand" href="/">⌂ <strong>On-Tour</strong><small>APARTMENT TOUR PRESENTATION</small></a><nav><a href="#apartments">Apartments</a><a href="#how">How It Works</a><a href="/call">Join Live Tour</a></nav><div><a class="btn" href="/call">Join a Tour</a><a class="adminlink" href="/admin">Admin Login</a></div></header>
+<section class="hero simple"><div class="heroCopy"><h1>On-Tour<br><em>Apartment Tour<br>Presentation</em></h1><p>Explore your next home through a live guided apartment presentation. Join using the room code shared by your host.</p><a class="btn" href="/call">▶ Join Live Tour</a><div class="benefits"><span>◉ Live Apartment Tours</span><span>◉ Ask Questions Live</span><span>◉ Video Presentations</span><span>◉ All Devices</span></div></div></section>
+<section class="content" id="apartments"><div class="sectionhead"><h2>Featured Apartments</h2><p>Choose the home you'd like to explore.</p></div><div class="apartments"><article><div class="photo one"></div><h3>Modern Studios</h3><p>Stylish and functional</p><button onclick="location.href='/call'">Join Tour</button></article><article><div class="photo two"></div><h3>1 Bedroom</h3><p>Comfort and convenience</p><button onclick="location.href='/call'">Join Tour</button></article><article><div class="photo three"></div><h3>2 Bedroom</h3><p>Room for your lifestyle</p><button onclick="location.href='/call'">Join Tour</button></article><article><div class="photo four"></div><h3>Luxury Apartments</h3><p>Premium living experience</p><button onclick="location.href='/call'">Join Tour</button></article></div></section>
+<section class="content how" id="how"><h2>How On-Tour Works</h2><div class="steps"><div><b>1</b><h3>Receive a Room Code</h3><p>Your host shares the live tour room code.</p></div><div><b>2</b><h3>Join the Tour</h3><p>Open Join Live Tour and enter the code.</p></div><div><b>3</b><h3>Watch the Presentation</h3><p>View the live camera or apartment video.</p></div><div><b>4</b><h3>Ask Questions</h3><p>Use the shared room chat.</p></div></div></section>
+<footer>⌂ On-Tour · Apartment Tour Presentation <a href="/call">Join Tour</a> <a href="/admin">Admin Login</a></footer></body></html>

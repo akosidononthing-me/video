@@ -1,4 +1,36 @@
-const $=id=>document.getElementById(id);
-async function refresh(){try{const r=await fetch('/api/auth');const j=await r.json();$('loginPanel').hidden=!!j.admin;$('adminPanel').hidden=!j.admin}catch(e){$('loginError').textContent='Connection error: '+e.message}}
-$('loginForm').onsubmit=async e=>{e.preventDefault();$('loginError').textContent='';try{const r=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:$('adminPassword').value})});if(!r.ok)throw Error('Incorrect Admin password');await refresh()}catch(e){$('loginError').textContent=e.message}};
-$('signout').onclick=async()=>{await fetch('/api/logout',{method:'POST'});await refresh()};refresh();
+const socket = io();
+const remoteVideo = document.getElementById('remoteVideo');
+let peerConnection;
+
+const config = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+
+socket.emit('join', 'admin');
+
+// When a client connects, Admin initiates the WebRTC offer
+socket.on('client-connected', async (clientId) => {
+    peerConnection = new RTCPeerConnection(config);
+    
+    peerConnection.ontrack = (event) => {
+        remoteVideo.srcObject = event.streams[0];
+    };
+
+    peerConnection.onicecandidate = (event) => {
+        if (event.candidate) {
+            socket.emit('ice-candidate', { target: clientId, candidate: event.candidate });
+        }
+    };
+
+    const offer = await peerConnection.createOffer();
+    await peerConnection.setLocalDescription(offer);
+    socket.emit('offer', { target: clientId, offer: offer });
+});
+
+socket.on('answer', async (data) => {
+    await peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
+});
+
+socket.on('ice-candidate', async (data) => {
+    if (peerConnection) {
+        await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+    }
+});

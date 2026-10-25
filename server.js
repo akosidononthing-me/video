@@ -6,27 +6,28 @@ const io = require('socket.io')(http);
 app.use(express.static('public'));
 
 io.on('connection', (socket) => {
-    console.log('A user connected:', socket.id);
-
-    // Broadcast signaling data to the other person in the call
-    socket.on('offer', (offer) => {
-        socket.broadcast.emit('offer', offer);
+    socket.on('join', (role) => {
+        socket.role = role;
+        socket.join(role); // Joins either 'admin' or 'client' room
+        console.log(`A ${role} connected:`, socket.id);
+        
+        // Notify admin when a new client joins
+        if (role === 'client') {
+            io.to('admin').emit('client-connected', socket.id);
+        }
     });
 
-    socket.on('answer', (answer) => {
-        socket.broadcast.emit('answer', answer);
+    socket.on('offer', (data) => {
+        socket.to(data.target).emit('offer', { offer: data.offer, sender: socket.id });
     });
 
-    socket.on('ice-candidate', (candidate) => {
-        socket.broadcast.emit('ice-candidate', candidate);
+    socket.on('answer', (data) => {
+        socket.to(data.target).emit('answer', { answer: data.answer, sender: socket.id });
     });
 
-    socket.on('disconnect', () => {
-        console.log('User disconnected:', socket.id);
+    socket.on('ice-candidate', (data) => {
+        socket.to(data.target).emit('ice-candidate', { candidate: data.candidate, sender: socket.id });
     });
 });
 
-const PORT = process.env.PORT || 3000;
-http.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-});
+http.listen(3000, () => console.log('Server running on http://localhost:3000'));
