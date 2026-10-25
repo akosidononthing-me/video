@@ -34,7 +34,30 @@ async function initCamera() {
         console.error("Camera error:", e);
     }
 }
+async function initCamera() {
+    try {
+        localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        localVideo.srcObject = localStream;
+        
+        if (role === 'admin') {
+            mainVideo.srcObject = localStream;
+            mainVideo.muted = true; 
+            // THIS IS THE FIX: Emit 'host-room' instead of 'create-room'
+            socket.emit('host-room', roomCode); 
+        } else {
+            socket.emit('join-room', roomCode);
+        }
+    } catch (e) {
+        console.error("Camera error:", e);
+    }
+}
 
+// Add this at the bottom of the file so clients are kicked out if the admin ends the tour
+socket.on('room-closed', () => {
+    alert('The admin has ended this tour.');
+    sessionStorage.clear();
+    window.location.href = '/';
+});
 // -----------------------------------------
 // ADMIN LOGIC: Broadcasting to Clients
 // -----------------------------------------
