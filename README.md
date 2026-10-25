@@ -1,40 +1,43 @@
-# On Thing Connect v3 — private admin + public clients
+# On-Tour v5 — PostgreSQL Edition
 
-## Render deployment
-1. Push the contents of this folder (including `server.js`, `package.json`, and `public`) to GitHub.
-2. Render → New → Web Service → connect repository.
-3. Build command: `npm install`; start command: `npm start`.
-4. Set environment variables:
-   - `ADMIN_PASSWORD`: a long, unique password of your choice (required).
-   - `SESSION_SECRET`: a random, long secret, at least 32 characters (recommended).
-5. Deploy.
+This version replaces the local `ontour-data.json` file with a **persistent PostgreSQL database**.
+Client accounts and tour requests now survive web-service restarts and redeployments.
 
-## URLs
-- **Private admin entry:** `https://YOUR-SERVICE.onrender.com/admin` (requires password).
-- **Public client entry:** `https://YOUR-SERVICE.onrender.com/`.
-The private URL is not a security boundary: the password and server-side room-creation checks protect Admin access. Keep the password secret.
+## Deploy on Render
 
-## Features
-- One Admin, up to 20 clients per room; Admin selects live camera or video file.
-- Each client sees the Admin broadcast and can share their camera/mic.
-- Admin sees client feeds in a gallery.
-- Shared text chat, side-by-side layout, fullscreen monitor.
-- Room codes are temporary; rooms are lost on service restart.
+1. Create a **Render Postgres** database in the same region as your web service.
+2. Open the database's **Connect** section and copy its **Internal Database URL**.
+3. Open the On-Tour **Web Service → Environment** and set:
+   - `DATABASE_URL` = the Internal Database URL (do not publish it)
+   - `ADMIN_PASSWORD` = your strong Admin password
+   - `SESSION_SECRET` = a fixed random secret with 32+ characters
+4. Replace the existing GitHub repository files with this ZIP's contents.
+5. Keep **Build Command** `npm install` and **Start Command** `npm start`.
+6. Deploy. The application automatically creates the `clients` and `tour_requests` tables and an index that prevents two approved tours from using the same date/time.
+7. Open `/`, sign up, and submit a test request. Open `/admin`, log in, and approve it.
 
-## Limitations / production requirements
-- WebRTC peer-to-peer needs a TURN relay on restricted networks. Configure TURN credentials in `public/app.js` (the `ice` setting).
-- The Admin uploads one stream per client; for large rooms use an SFU.
-- Video file audio capture varies by browser and codec; test in Chrome/Edge.
-- Login is a single environment-password session, not a multi-admin account system. Add rate limiting, CSRF protection, HTTPS-only cookie enforcement, logging, and durable session storage for high-security deployments.
-- Room chat is ephemeral, not persisted. Anyone with the room code can join as a client.
-- No automated real-device browser test was performed. Verify functionality before production use.
+## Stored data
 
-## On-Tour homepage and scheduler (v4)
-- `/` is the public apartment-tour homepage, client sign-up/sign-in, tour request form and request history.
-- `/admin` is the password-protected video-room interface; the homepage also displays Admin tour requests after Admin login.
-- `/call` is the public room-code joining interface.
-- Configure `ADMIN_PASSWORD` and `SESSION_SECRET` on Render as before.
-- Tour requests and client accounts are stored in `ontour-data.json` by default. **Render's default filesystem is ephemeral**, so production requires a persistent disk and `DATA_FILE=/var/data/ontour-data.json`, or migration to PostgreSQL. The JSON file is suitable only for a single service instance.
-- Tour times are preferred requests, not guaranteed available slots. Admin approves or declines them. No email confirmations or automatic room-code delivery yet.
-- Passwords are salted and hashed. Add login rate limiting, password recovery, email verification, audit logs and CSRF protections before public production use.
-- Photo URLs are illustrative Unsplash images, not actual apartment inventory.
+- `clients`: id, name, unique email, salted scrypt password hash, registration timestamp
+- `tour_requests`: client association, apartment, date, time, notes, status, timestamp, optional room code
+
+SQL queries are parameterized. The database has a unique constraint on client emails and a partial unique index on approved tour slots.
+
+## Important
+
+- This upgrade **does not automatically import** data from the old `ontour-data.json`. Existing accounts and tour requests must be migrated separately if you need to preserve them.
+- Chat messages and live WebRTC rooms are still in memory; they are not stored in PostgreSQL.
+- Tour approval does not automatically create a video room.
+- Use a persistent `SESSION_SECRET`; changing it logs out existing sessions.
+- Production security still needs rate limiting, CSRF protections, and operational monitoring.
+- Date/time validation follows the server's timezone for the one-hour-ahead check; set a consistent booking timezone before taking real bookings.
+- Database availability, service plan, and backup retention depend on your Render Postgres plan. Check your plan's expiration and backup settings.
+- Video calls still need TURN configuration on restricted networks.
+- Tested: JavaScript syntax and ZIP integrity. Not tested: a live Render PostgreSQL connection or end-to-end user flows.
+
+## v5.1 Fixes
+- `/admin` now serves a real admin dashboard with login and tour approvals.
+- Admin video room: `/call?admin=1`; client video room: `/call`.
+- Corrected email validation in client registration.
+- Homepage now displays account-loading errors instead of only logging them.
+- PostgreSQL credentials and environment variables remain required.

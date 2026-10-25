@@ -1,5 +1,5 @@
 'use strict';
-const $=id=>document.getElementById(id),socket=io(),adminPath=location.pathname==='/admin';
+const $=id=>document.getElementById(id),socket=io(),adminPath=new URLSearchParams(location.search).has('admin');
 let role='',room='',camera=null,source=null,fileUrl=null,micMuted=false,side=false;
 const peers=new Map(),pending=new Map(),ice={iceServers:[{urls:'stun:stun.l.google.com:19302'}]};
 const status=s=>$('status').textContent=s,err=s=>$('entryError').textContent=s;

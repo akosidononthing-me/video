@@ -14,4 +14,4 @@ function requestCard(r,admin=false){const el=document.createElement('div');el.cl
 async function loadRequests(){if(!user)return;try{const j=await api('/api/tours');$('requests').replaceChildren(...j.requests.map(r=>requestCard(r)))}catch(e){$('requests').textContent=e.message}}
 $('logout').onclick=async()=>{await api('/api/client/logout',{method:'POST'});user=null;await refresh()};
 async function loadAdmin(){try{const a=await api('/api/auth');if(!a.admin)return;$('adminDashboard').hidden=false;const j=await api('/api/tours');$('adminRequests').replaceChildren(...j.requests.map(r=>requestCard(r,true)))}catch(e){console.warn(e)}}
-refresh().catch(console.warn);loadAdmin();
+refresh().catch(e=>{console.error(e);$('bookingMessage').textContent='Unable to load account information: '+e.message});
