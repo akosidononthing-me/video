@@ -1,13 +1,12 @@
 {
-  "name": "on-tour-postgres",
-  "version": "5.0.0",
+  "name": "on-tour-simple",
+  "version": "6.0.0",
   "private": true,
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
     "express": "^4.21.2",
-    "socket.io": "^4.8.1",
-    "pg": "^8.13.1"
+    "socket.io": "^4.8.1"
   }
 }
