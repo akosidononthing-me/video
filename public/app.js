@@ -22,7 +22,14 @@ function show(){
 }
 async function ensureCamera(){
  if(camera?.getTracks().some(t=>t.readyState==='live'))return camera;
- camera=await navigator.mediaDevices.getUserMedia({video:true,audio:true});
+ if(!navigator.mediaDevices?.getUserMedia)throw Error('Camera requires HTTPS or localhost');
+ try{camera=await navigator.mediaDevices.getUserMedia({video:true,audio:true})}
+ catch(e){
+  if(['NotFoundError','NotReadableError','OverconstrainedError'].includes(e.name)){
+   camera=await navigator.mediaDevices.getUserMedia({video:true,audio:false});
+   status('Camera active (microphone unavailable).');
+  }else throw e;
+ }
  if(role==='client')source=camera;
  if(role==='client')$('local').srcObject=camera;
  return camera;
@@ -31,7 +38,7 @@ function clientFeed(id){
  let el=document.getElementById('feed-'+id);
  if(!el){
   el=document.createElement('div');el.className='feed';el.id='feed-'+id;
-  const v=document.createElement('video');v.autoplay=true;v.playsInline=true;
+  const v=document.createElement('video');v.autoplay=true;v.playsInline=true;v.muted=true;v.setAttribute('muted','');
   const label=document.createElement('span');label.textContent='Client '+id.slice(0,6);
   el.append(v,label);$('videoGrid').append(el);
  }
@@ -40,11 +47,16 @@ function clientFeed(id){
 function makePeer(id){
  if(peers.has(id))return peers.get(id);
  const pc=new RTCPeerConnection(ice);peers.set(id,pc);pending.set(id,[]);
+ pc.oniceconnectionstatechange=()=>{
+  if(['failed','disconnected'].includes(pc.iceConnectionState))
+   status('Video connection '+pc.iceConnectionState+'. A TURN server may be required on these networks.');
+ };
  pc.onicecandidate=e=>{if(e.candidate)socket.emit('signal',{to:id,candidate:e.candidate.toJSON()})};
  pc.ontrack=e=>{
   const video=role==='admin'?clientFeed(id):$('remote');
   if(e.streams[0])video.srcObject=e.streams[0];
   else{const stream=video.srcObject||new MediaStream();stream.addTrack(e.track);video.srcObject=stream}
+  video.play().catch(()=>status('Client feed received. Click the video to play.'));
   if(role==='client')$('waiting').hidden=true;
  };
  pc.onconnectionstatechange=()=>status('Peer '+id.slice(0,6)+': '+pc.connectionState);
@@ -86,7 +98,7 @@ $('join').onclick=()=>{
   if(!r?.ok)return err(r?.error||'Unable to join');
   role='client';room=r.code;show();
   try{await ensureCamera();status('Camera ready. Waiting for Admin.')}
-  catch(e){status('Camera unavailable: '+e.message)}
+  catch(e){status('Camera unavailable: '+e.message+'. Allow camera access in browser settings, then press Enable camera.')}
  });
 };
 socket.on('client-joined',async ({id,count})=>{
