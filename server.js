@@ -12,7 +12,8 @@ const rooms = {};
 // Simple Admin Login Endpoint
 app.post('/api/admin-login', (req, res) => {
     const { password } = req.body;
-    if (password === 'admin123') { // Replace with secure env variable in production
+    // Uses the Render environment variable. Keep 'admin123' as a fallback for local testing.
+    if (password === (process.env.ADMIN_PASSWORD || 'admin123')) { 
         res.json({ success: true });
     } else {
         res.status(401).json({ success: false, message: 'Invalid password' });
