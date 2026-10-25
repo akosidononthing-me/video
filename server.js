@@ -6,6 +6,15 @@ const SECRET=process.env.SESSION_SECRET||crypto.randomBytes(32).toString('hex');
 const ADMIN_PASSWORD=process.env.ADMIN_PASSWORD;
 if(!ADMIN_PASSWORD){console.error('ADMIN_PASSWORD environment variable is required');process.exit(1)}
 const rooms=new Map(),MAX_CLIENTS=20,TTL=12*60*60*1000;
+const fs=require('fs'),path=require('path');
+const DB=process.env.DATA_FILE||path.join(__dirname,'ontour-data.json');
+let db={users:[],requests:[]};try{db=JSON.parse(fs.readFileSync(DB,'utf8'))}catch{}
+function save(){const tmp=DB+'.tmp';fs.writeFileSync(tmp,JSON.stringify(db,null,2));fs.renameSync(tmp,DB)}
+function hash(p,salt){return crypto.scryptSync(p,salt,64).toString('hex')}
+function userFrom(req){const token=cookie(req).client_session;if(!token)return null;const [id,exp,sig]=token.split('.');if(!id||!exp||!sig||Number(exp)<Date.now())return null;const want=crypto.createHmac('sha256',SECRET).update(id+'.'+exp).digest('hex');const a=Buffer.from(sig),b=Buffer.from(want);return a.length===b.length&&crypto.timingSafeEqual(a,b)?db.users.find(u=>u.id===id):null}
+function setClientCookie(res,u){const exp=String(Date.now()+TTL);const sig=crypto.createHmac('sha256',SECRET).update(u.id+'.'+exp).digest('hex');res.setHeader('Set-Cookie',`client_session=${u.id}.${exp}.${sig}; HttpOnly; SameSite=Lax; Path=/; Max-Age=43200; ${res.req.secure||res.req.headers['x-forwarded-proto']==='https'?'Secure':''}`)}
+function publicUser(u){return u?{id:u.id,name:u.name,email:u.email}:null}
+
 app.use(express.json({limit:'16kb'}));
 app.use('/assets',express.static('public',{index:false}));
 const cookie=(req)=>Object.fromEntries((req.headers.cookie||'').split(';').map(x=>x.trim().split('=').slice(0,2)).filter(x=>x.length===2));
@@ -19,8 +28,41 @@ function valid(token){
 }
 function authed(req){return valid(cookie(req).admin_session)}
 app.get('/',(req,res)=>res.sendFile(__dirname+'/public/index.html'));
+app.get('/call',(req,res)=>res.sendFile(__dirname+'/public/call.html'));
 app.get('/admin',(req,res)=>res.sendFile(__dirname+'/public/index.html'));
 app.get('/api/auth',(req,res)=>res.json({admin:authed(req)}));
+app.get('/api/client/me',(req,res)=>res.json({user:publicUser(userFrom(req))}));
+app.post('/api/client/signup',(req,res)=>{
+ const name=String(req.body?.name||'').trim().slice(0,100),email=String(req.body?.email||'').trim().toLowerCase(),password=String(req.body?.password||'');
+ if(name.length<2||!/^\S+@\S+\.\S+$/.test(email)||password.length<10)return res.status(400).json({error:'Enter name, valid email and password of at least 10 characters'});
+ if(db.users.some(u=>u.email===email))return res.status(409).json({error:'Email already registered'});
+ const salt=crypto.randomBytes(16).toString('hex'),u={id:crypto.randomUUID(),name,email,salt,passwordHash:hash(password,salt)};
+ db.users.push(u);save();setClientCookie(res,u);res.json({user:publicUser(u)});
+});
+app.post('/api/client/login',(req,res)=>{
+ const email=String(req.body?.email||'').trim().toLowerCase(),password=String(req.body?.password||'');const u=db.users.find(u=>u.email===email);
+ if(!u||hash(password,u.salt)!==u.passwordHash)return res.status(401).json({error:'Invalid credentials'});
+ setClientCookie(res,u);res.json({user:publicUser(u)});
+});
+app.post('/api/client/logout',(req,res)=>{res.setHeader('Set-Cookie','client_session=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0');res.json({ok:true})});
+app.get('/api/tours',(req,res)=>{const u=userFrom(req);if(!u&&!authed(req))return res.status(401).json({error:'Sign in required'});
+ res.json({requests:db.requests.filter(r=>authed(req)||r.userId===u.id).map(r=>({...r,userId:undefined}))});
+});
+app.post('/api/tours',(req,res)=>{
+ const u=userFrom(req);if(!u)return res.status(401).json({error:'Create an account or sign in to request a tour'});
+ const apartment=String(req.body?.apartment||'').trim().slice(0,100),date=String(req.body?.date||''),time=String(req.body?.time||''),notes=String(req.body?.notes||'').trim().slice(0,1000);
+ const when=new Date(date+'T'+time+':00');if(!apartment||!/^\d{4}-\d{2}-\d{2}$/.test(date)||!/^\d{2}:\d{2}$/.test(time)||!Number.isFinite(when.getTime())||when.getTime()<Date.now()+3600000)return res.status(400).json({error:'Select an apartment and a future date/time (at least one hour ahead)'});
+ if(db.requests.some(r=>r.date===date&&r.time===time&&r.status==='approved'))return res.status(409).json({error:'That time is already booked. Choose another.'});
+ const r={id:crypto.randomUUID(),userId:u.id,name:u.name,email:u.email,apartment,date,time,notes,status:'pending',createdAt:new Date().toISOString(),roomCode:null};db.requests.push(r);save();res.json({request:r});
+});
+app.patch('/api/tours/:id',(req,res)=>{
+ if(!authed(req))return res.status(403).json({error:'Admin login required'});
+ const r=db.requests.find(x=>x.id===req.params.id);if(!r)return res.status(404).json({error:'Not found'});
+ const status=String(req.body?.status||'');if(!['approved','declined','completed'].includes(status))return res.status(400).json({error:'Invalid status'});
+ if(status==='approved'&&db.requests.some(x=>x.id!==r.id&&x.date===r.date&&x.time===r.time&&x.status==='approved'))return res.status(409).json({error:'Another tour already approved for this slot'});
+ r.status=status;save();res.json({request:r});
+});
+
 app.post('/api/login',(req,res)=>{
  const given=Buffer.from(String(req.body?.password||'')),want=Buffer.from(ADMIN_PASSWORD);
  if(given.length!==want.length||!crypto.timingSafeEqual(given,want))return res.status(401).json({error:'Incorrect admin password'});

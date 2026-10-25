@@ -28,3 +28,13 @@ The private URL is not a security boundary: the password and server-side room-cr
 - Login is a single environment-password session, not a multi-admin account system. Add rate limiting, CSRF protection, HTTPS-only cookie enforcement, logging, and durable session storage for high-security deployments.
 - Room chat is ephemeral, not persisted. Anyone with the room code can join as a client.
 - No automated real-device browser test was performed. Verify functionality before production use.
+
+## On-Tour homepage and scheduler (v4)
+- `/` is the public apartment-tour homepage, client sign-up/sign-in, tour request form and request history.
+- `/admin` is the password-protected video-room interface; the homepage also displays Admin tour requests after Admin login.
+- `/call` is the public room-code joining interface.
+- Configure `ADMIN_PASSWORD` and `SESSION_SECRET` on Render as before.
+- Tour requests and client accounts are stored in `ontour-data.json` by default. **Render's default filesystem is ephemeral**, so production requires a persistent disk and `DATA_FILE=/var/data/ontour-data.json`, or migration to PostgreSQL. The JSON file is suitable only for a single service instance.
+- Tour times are preferred requests, not guaranteed available slots. Admin approves or declines them. No email confirmations or automatic room-code delivery yet.
+- Passwords are salted and hashed. Add login rate limiting, password recovery, email verification, audit logs and CSRF protections before public production use.
+- Photo URLs are illustrative Unsplash images, not actual apartment inventory.
