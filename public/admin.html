@@ -2,62 +2,128 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Admin Client - Video Call</title>
-    <link rel="stylesheet" href="admin-style.css">
+    <title>Admin Dashboard | On-Tour</title>
+    <style>
+        body { margin: 0; font-family: 'Segoe UI', sans-serif; background-color: #0b1120; color: white; display: flex; height: 100vh; }
+        
+        /* Login Overlay */
+        #loginOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #0b1120; display: flex; justify-content: center; align-items: center; z-index: 1000; }
+        .login-box { background: #1f2937; padding: 40px; border-radius: 12px; width: 300px; text-align: center; }
+        .login-box input { width: 100%; padding: 12px; margin: 15px 0; border-radius: 6px; border: none; box-sizing: border-box; }
+        .login-box button { width: 100%; padding: 12px; background: #facc15; color: #111827; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
+
+        /* Dashboard Layout */
+        .sidebar { width: 250px; background: #111827; padding: 20px; border-right: 1px solid #1f2937; }
+        .main-content { flex: 1; padding: 40px; overflow-y: auto; display: none; }
+        
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+        .create-btn { background: #facc15; color: #111827; padding: 12px 24px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        
+        .stats { display: flex; gap: 20px; margin-bottom: 40px; }
+        .stat-card { background: #1f2937; padding: 20px; border-radius: 12px; flex: 1; }
+        
+        .rooms-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
+        .room-card { background: #1f2937; border-radius: 12px; overflow: hidden; border: 1px solid #374151; }
+        .room-card img { width: 100%; height: 150px; object-fit: cover; }
+        .room-info { padding: 20px; }
+        .room-code-display { background: #111827; padding: 10px; border-radius: 6px; margin: 15px 0; text-align: center; font-size: 24px; font-weight: bold; letter-spacing: 2px; }
+        .room-actions { display: flex; gap: 10px; }
+        .open-btn { flex: 1; background: #facc15; color: #111827; border: none; padding: 10px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        .end-btn { flex: 1; background: transparent; color: #ef4444; border: 1px solid #ef4444; padding: 10px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+    </style>
 </head>
 <body>
-    <header class="top-bar">
-        <div class="header-left">
-            <h2>Video Call <span class="badge">Live</span></h2>
-            <p>Admin Client • Monitoring</p>
+    <!-- Password Protection -->
+    <div id="loginOverlay">
+        <div class="login-box">
+            <h2>Admin Login</h2>
+            <input type="password" id="adminPassword" placeholder="Enter Password">
+            <button onclick="login()">Login</button>
+            <p id="loginError" style="color: #ef4444; display: none; font-size: 14px;">Invalid password</p>
         </div>
-        <div class="header-right">
-            <div class="timer">⏱ 00:12:34</div>
-            <button class="btn-danger">End Call</button>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div style="color: #facc15; font-size: 20px; font-weight: bold; margin-bottom: 40px;">🏠 On-Tour</div>
+        <div style="color: white; margin-bottom: 20px;">Dashboard</div>
+        <div style="color: #9ca3af; margin-bottom: 20px;">Live Rooms</div>
+    </div>
+
+    <!-- Main Dashboard -->
+    <div class="main-content" id="dashboard">
+        <div class="header">
+            <div>
+                <h1 style="margin:0;">Admin Dashboard</h1>
+                <p style="color: #9ca3af; margin-top: 5px;">Manage your live apartment tours</p>
+            </div>
+            <button class="create-btn" id="createRoomBtn">+ Create New Room</button>
         </div>
-    </header>
 
-    <main class="dashboard">
-        <section class="video-section">
-            <div class="video-wrapper">
-                <span class="video-label top-left">Worker 1 (Admin View)</span>
-                <video id="remoteVideo" autoplay playsinline></video>
-                <span class="video-label bottom-left">Worker 1</span>
-            </div>
-        </section>
+        <div class="stats">
+            <div class="stat-card">🎥 Active Rooms: <span id="activeCount">0</span></div>
+            <div class="stat-card">👥 Connected Clients: <span id="clientCount">0</span></div>
+        </div>
 
-        <aside class="sidebar">
-            <div class="tabs">
-                <button class="active">Chat</button>
-                <button>Participants</button>
-            </div>
-            
-            <div class="chat-area">
-                <div class="message admin">
-                    <p>Hello Worker 1, can you confirm you received the task?</p>
-                </div>
-                <div class="message worker">
-                    <p>Yes, I received it. I'm on it now.</p>
-                </div>
-            </div>
-            
-            <div class="chat-input">
-                <input type="text" placeholder="Type a message...">
-            </div>
-
-            <div class="call-controls">
-                <h3>Call Controls</h3>
-                <div class="control-buttons">
-                    <button class="ctrl-btn">🎤<span>Audio</span></button>
-                    <button class="ctrl-btn danger">⏺<span>Record</span></button>
-                    <button class="ctrl-btn">🔍<span>Zoom</span></button>
-                    <button class="ctrl-btn">⛶<span>Full Screen</span></button>
-                </div>
-            </div>
-        </aside>
-    </main>
+        <h2>Active Rooms</h2>
+        <div class="rooms-grid" id="roomsContainer">
+            <!-- Room cards injected here by JS -->
+        </div>
+    </div>
 
     <script src="/socket.io/socket.io.js"></script>
-    <script src="admin.js"></script>
+    <script>
+        const socket = io();
+        let currentRoom = null;
+
+        // Simple auth check
+        async function login() {
+            const password = document.getElementById('adminPassword').value;
+            const res = await fetch('/api/admin-login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ password })
+            });
+            const data = await res.json();
+            
+            if (data.success) {
+                document.getElementById('loginOverlay').style.display = 'none';
+                document.getElementById('dashboard').style.display = 'block';
+            } else {
+                document.getElementById('loginError').style.display = 'block';
+            }
+        }
+
+        // Room Generation
+        document.getElementById('createRoomBtn').addEventListener('click', () => {
+            socket.emit('create-room');
+        });
+
+        socket.on('room-created', (roomCode) => {
+            currentRoom = roomCode;
+            document.getElementById('activeCount').innerText = '1';
+            
+            const card = document.createElement('div');
+            card.className = 'room-card';
+            card.innerHTML = `
+                <div style="background: #374151; height: 150px; display: flex; justify-content: center; align-items: center; color: #9ca3af;">Camera Preview</div>
+                <div class="room-info">
+                    <h3>New Live Tour</h3>
+                    <div class="room-code-display">${roomCode}</div>
+                    <div class="room-actions">
+                        <button class="open-btn" onclick="openRoom('${roomCode}')">Open Room</button>
+                        <button class="end-btn" onclick="this.parentElement.parentElement.parentElement.remove(); document.getElementById('activeCount').innerText = '0';">End Room</button>
+                    </div>
+                </div>
+            `;
+            document.getElementById('roomsContainer').appendChild(card);
+        });
+
+        function openRoom(roomCode) {
+            sessionStorage.setItem('role', 'admin');
+            sessionStorage.setItem('roomCode', roomCode);
+            window.location.href = 'live-tour.html';
+        }
+    </script>
 </body>
 </html>
