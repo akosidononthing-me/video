@@ -62,7 +62,6 @@
         });
 
         socket.on('join-success', (roomCode) => {
-            // Store role and room in sessionStorage, then redirect to the live room UI
             sessionStorage.setItem('role', 'client');
             sessionStorage.setItem('roomCode', roomCode);
             window.location.href = 'live-tour.html';
