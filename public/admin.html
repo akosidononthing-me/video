@@ -6,13 +6,11 @@
     <style>
         body { margin: 0; font-family: 'Segoe UI', sans-serif; background-color: #0b1120; color: white; display: flex; height: 100vh; }
         
-        /* Login Overlay */
         #loginOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #0b1120; display: flex; justify-content: center; align-items: center; z-index: 1000; }
         .login-box { background: #1f2937; padding: 40px; border-radius: 12px; width: 300px; text-align: center; }
         .login-box input { width: 100%; padding: 12px; margin: 15px 0; border-radius: 6px; border: none; box-sizing: border-box; }
         .login-box button { width: 100%; padding: 12px; background: #facc15; color: #111827; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
 
-        /* Dashboard Layout */
         .sidebar { width: 250px; background: #111827; padding: 20px; border-right: 1px solid #1f2937; }
         .main-content { flex: 1; padding: 40px; overflow-y: auto; display: none; }
         
@@ -24,7 +22,6 @@
         
         .rooms-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
         .room-card { background: #1f2937; border-radius: 12px; overflow: hidden; border: 1px solid #374151; }
-        .room-card img { width: 100%; height: 150px; object-fit: cover; }
         .room-info { padding: 20px; }
         .room-code-display { background: #111827; padding: 10px; border-radius: 6px; margin: 15px 0; text-align: center; font-size: 24px; font-weight: bold; letter-spacing: 2px; }
         .room-actions { display: flex; gap: 10px; }
@@ -33,7 +30,6 @@
     </style>
 </head>
 <body>
-    <!-- Password Protection -->
     <div id="loginOverlay">
         <div class="login-box">
             <h2>Admin Login</h2>
@@ -43,14 +39,12 @@
         </div>
     </div>
 
-    <!-- Sidebar -->
     <div class="sidebar">
         <div style="color: #facc15; font-size: 20px; font-weight: bold; margin-bottom: 40px;">🏠 On-Tour</div>
         <div style="color: white; margin-bottom: 20px;">Dashboard</div>
         <div style="color: #9ca3af; margin-bottom: 20px;">Live Rooms</div>
     </div>
 
-    <!-- Main Dashboard -->
     <div class="main-content" id="dashboard">
         <div class="header">
             <div>
@@ -66,17 +60,13 @@
         </div>
 
         <h2>Active Rooms</h2>
-        <div class="rooms-grid" id="roomsContainer">
-            <!-- Room cards injected here by JS -->
-        </div>
+        <div class="rooms-grid" id="roomsContainer"></div>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
-        let currentRoom = null;
 
-        // Simple auth check
         async function login() {
             const password = document.getElementById('adminPassword').value;
             const res = await fetch('/api/admin-login', {
@@ -94,14 +84,13 @@
             }
         }
 
-        // Room Generation
         document.getElementById('createRoomBtn').addEventListener('click', () => {
             socket.emit('create-room');
         });
 
         socket.on('room-created', (roomCode) => {
-            currentRoom = roomCode;
-            document.getElementById('activeCount').innerText = '1';
+            let count = parseInt(document.getElementById('activeCount').innerText);
+            document.getElementById('activeCount').innerText = count + 1;
             
             const card = document.createElement('div');
             card.className = 'room-card';
@@ -112,23 +101,24 @@
                     <div class="room-code-display">${roomCode}</div>
                     <div class="room-actions">
                         <button class="open-btn" onclick="openRoom('${roomCode}')">Open Room</button>
-                        <button class="end-btn" onclick="this.parentElement.parentElement.parentElement.remove(); document.getElementById('activeCount').innerText = '0';">End Room</button>
+                        <button class="end-btn" onclick="endRoom(this, '${roomCode}')">End Room</button>
                     </div>
                 </div>
             `;
             document.getElementById('roomsContainer').appendChild(card);
         });
-        function endRoom(btn, roomCode) {
-            socket.emit('delete-room', roomCode);
-            btn.parentElement.parentElement.parentElement.remove(); 
-            
-            let count = parseInt(document.getElementById('activeCount').innerText);
-            document.getElementById('activeCount').innerText = Math.max(0, count - 1);
-        }
+
         function openRoom(roomCode) {
             sessionStorage.setItem('role', 'admin');
             sessionStorage.setItem('roomCode', roomCode);
             window.location.href = 'live-tour.html';
+        }
+
+        function endRoom(btn, roomCode) {
+            socket.emit('delete-room', roomCode);
+            btn.parentElement.parentElement.parentElement.remove(); 
+            let count = parseInt(document.getElementById('activeCount').innerText);
+            document.getElementById('activeCount').innerText = Math.max(0, count - 1);
         }
     </script>
 </body>
