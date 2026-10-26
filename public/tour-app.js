@@ -3,7 +3,7 @@ const role = sessionStorage.getItem('role');
 const roomCode = sessionStorage.getItem('roomCode');
 
 if (!role || !roomCode) {
-    window.location.href = '/'; // Redirect if accessed directly
+    window.location.href = '/'; 
 }
 
 document.getElementById('displayRoomCode').innerText = roomCode;
@@ -11,7 +11,7 @@ document.getElementById('displayRoomCode').innerText = roomCode;
 const mainVideo = document.getElementById('mainVideo');
 const localVideo = document.getElementById('localVideo');
 let localStream;
-const peerConnections = {}; // Stores up to 4 client connections for the Admin
+const peerConnections = {}; 
 
 const config = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
 
@@ -20,47 +20,20 @@ async function initCamera() {
         localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
         localVideo.srcObject = localStream;
         
-        // If this user is the Admin, they are the main broadcast
         if (role === 'admin') {
             mainVideo.srcObject = localStream;
             mainVideo.muted = true; 
-            // Inform server admin has joined the live page
-            socket.emit('create-room'); // In a real app, update logic to 'rejoin' rather than create anew
-        } else {
-            // Client joining the room
-            socket.emit('join-room', roomCode);
-        }
-    } catch (e) {
-        console.error("Camera error:", e);
-    }
-}
-async function initCamera() {
-    try {
-        localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-        localVideo.srcObject = localStream;
-        
-        if (role === 'admin') {
-            mainVideo.srcObject = localStream;
-            mainVideo.muted = true; 
-            // THIS IS THE FIX: Emit 'host-room' instead of 'create-room'
             socket.emit('host-room', roomCode); 
         } else {
             socket.emit('join-room', roomCode);
         }
     } catch (e) {
         console.error("Camera error:", e);
+        alert('Could not access camera/microphone.');
     }
 }
 
-// Add this at the bottom of the file so clients are kicked out if the admin ends the tour
-socket.on('room-closed', () => {
-    alert('The admin has ended this tour.');
-    sessionStorage.clear();
-    window.location.href = '/';
-});
-// -----------------------------------------
-// ADMIN LOGIC: Broadcasting to Clients
-// -----------------------------------------
+// ADMIN LOGIC
 socket.on('client-joined', async ({ clientId, totalClients }) => {
     if (role !== 'admin') return;
     
@@ -69,7 +42,6 @@ socket.on('client-joined', async ({ clientId, totalClients }) => {
     const pc = new RTCPeerConnection(config);
     peerConnections[clientId] = pc;
 
-    // Send Admin's camera to the new client
     localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
 
     pc.onicecandidate = (event) => {
@@ -83,16 +55,13 @@ socket.on('client-joined', async ({ clientId, totalClients }) => {
     socket.emit('offer', { target: clientId, offer });
 });
 
-// -----------------------------------------
-// CLIENT LOGIC: Receiving Admin's Broadcast
-// -----------------------------------------
+// CLIENT LOGIC
 socket.on('offer', async (data) => {
     if (role !== 'client') return;
 
     const pc = new RTCPeerConnection(config);
     peerConnections['admin'] = pc;
 
-    // Display Admin's feed in the large main window
     pc.ontrack = (event) => {
         if (!mainVideo.srcObject) {
             mainVideo.srcObject = event.streams[0];
@@ -105,7 +74,6 @@ socket.on('offer', async (data) => {
         }
     };
 
-    // Client sends their camera back (optional, for admin monitoring)
     localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
 
     await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
@@ -115,9 +83,7 @@ socket.on('offer', async (data) => {
     socket.emit('answer', { target: data.sender, answer });
 });
 
-// -----------------------------------------
-// COMMON LOGIC: Answers & Network Routing
-// -----------------------------------------
+// COMMON WEBRTC
 socket.on('answer', async (data) => {
     const pc = role === 'admin' ? peerConnections[data.sender] : peerConnections['admin'];
     if (pc) await pc.setRemoteDescription(new RTCSessionDescription(data.answer));
@@ -129,14 +95,42 @@ socket.on('ice-candidate', async (data) => {
 });
 
 socket.on('client-left', ({ totalClients }) => {
-    document.getElementById('clientCount').innerText = `${totalClients} Clients Connected`;
+    if (role === 'admin') {
+        document.getElementById('clientCount').innerText = `${totalClients} Clients Connected`;
+    }
 });
 
-// Leave Tour Button
+socket.on('room-closed', () => {
+    alert('This tour has ended.');
+    sessionStorage.clear();
+    window.location.href = '/';
+});
+
+// CHAT LOGIC
+document.getElementById('sendBtn').addEventListener('click', () => {
+    const input = document.getElementById('chatInput');
+    if (input.value.trim()) {
+        socket.emit('chat-message', { 
+            roomCode, 
+            senderName: role === 'admin' ? 'Admin' : 'Client', 
+            text: input.value 
+        });
+        input.value = '';
+    }
+});
+
+socket.on('chat-message', (data) => {
+    const msgDiv = document.createElement('div');
+    msgDiv.className = 'msg';
+    msgDiv.innerHTML = `<div class="msg-sender">${data.sender}</div><div class="msg-bubble">${data.text}</div>`;
+    document.getElementById('chatMessages').appendChild(msgDiv);
+    document.getElementById('chatMessages').scrollTop = document.getElementById('chatMessages').scrollHeight;
+});
+
+// CONTROLS
 document.getElementById('leaveBtn').addEventListener('click', () => {
     sessionStorage.clear();
     window.location.href = role === 'admin' ? 'admin.html' : 'index.html';
 });
 
-// Start the camera and connection process
 initCamera();
